@@ -18,6 +18,8 @@ interface Insult {
 // Define the type for the context
 interface InsultContextType {
   insults: Insult[];
+  isLoadingInsults: boolean;
+  insultsError: string | null;
   likedInsults: { id: string; type: string }[];
   selectedInsult: string;
   setSelectedInsult: (id: string) => void;
@@ -30,6 +32,8 @@ interface InsultContextType {
 // Create the context
 const InsultContext = createContext<InsultContextType>({
   insults: [],
+  isLoadingInsults: true,
+  insultsError: null,
   likedInsults: [],
   selectedInsult: "",
   setSelectedInsult: () => {},
@@ -44,6 +48,8 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [insults, setInsults] = useState<Insult[]>([]);
+  const [isLoadingInsults, setIsLoadingInsults] = useState<boolean>(true);
+  const [insultsError, setInsultsError] = useState<string | null>(null);
   const [selectedInsult, setSelectedInsult] = useState<string>("");
   const [likedInsults, setLikedInsults] = useState<
     { id: string; type: string }[]
@@ -60,7 +66,7 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
           Array.isArray(votes) &&
           votes.every(
             (vote) =>
-              typeof vote.id === "string" && typeof vote.type === "string"
+              typeof vote.id === "string" && typeof vote.type === "string",
           )
         ) {
           setLikedInsults(votes);
@@ -80,8 +86,8 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
     channel.bind("update-insult", (updatedInsult: Insult) => {
       setInsults((prev) =>
         prev.map((insult) =>
-          insult._id === updatedInsult._id ? updatedInsult : insult
-        )
+          insult._id === updatedInsult._id ? updatedInsult : insult,
+        ),
       );
     });
 
@@ -94,21 +100,21 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const channel = pusherClient.subscribe("insults");
-  
+
     // Listen for "update-insult" events
     channel.bind("update-insult", (updatedInsult: Insult) => {
       setInsults((prev) =>
         prev.map((insult) =>
-          insult._id === updatedInsult._id ? updatedInsult : insult
-        )
+          insult._id === updatedInsult._id ? updatedInsult : insult,
+        ),
       );
     });
-  
+
     // Listen for "new-insult" events
     channel.bind("new-insult", (newInsult: Insult) => {
       setInsults((prev) => [newInsult, ...prev]); // Add the new insult to the top of the list
     });
-  
+
     // Cleanup on unmount
     return () => {
       channel.unbind("update-insult");
@@ -119,11 +125,16 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Fetch insults from the API
   const fetchInsults = async () => {
+    setIsLoadingInsults(true);
+    setInsultsError(null);
     try {
       const response = await axios.get("/api/insult"); // Adjust the API endpoint
       setInsults(response.data);
     } catch (error) {
+      setInsultsError("Failed to load gossips. Please try again.");
       throw error;
+    } finally {
+      setIsLoadingInsults(false);
     }
   };
 
@@ -132,7 +143,7 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       await axios.post("/api/insult", { detail }); // Adjust the API endpoint
     } catch (error) {
-      throw error
+      throw error;
     }
   };
 
@@ -149,7 +160,7 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
       // Save each insult's like/dislike status to localStorage
       localStorage.setItem(
         "voted",
-        JSON.stringify(updatedLikedInsults) // Save array of objects with insult ID and action type
+        JSON.stringify(updatedLikedInsults), // Save array of objects with insult ID and action type
       );
 
       return updatedLikedInsults;
@@ -157,8 +168,8 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setInsults((prev) =>
       prev.map((insult) =>
-        insult._id === insultId ? { ...insult, like: insult.like + 1 } : insult
-      )
+        insult._id === insultId ? { ...insult, like: insult.like + 1 } : insult,
+      ),
     );
 
     try {
@@ -167,30 +178,31 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // Update state with actual response data
       setInsults((prev) =>
-        prev.map((insult) => (insult._id === insultId ? response.data : insult))
+        prev.map((insult) =>
+          insult._id === insultId ? response.data : insult,
+        ),
       );
     } catch (error) {
-      
-
       // Rollback optimistic update if the request fails
       setLikedInsults((prev) =>
-        prev.filter((insult) => insult.id !== insultId)
+        prev.filter((insult) => insult.id !== insultId),
       );
 
       setInsults((prev) =>
         prev.map((insult) =>
           insult._id === insultId
             ? { ...insult, like: insult.like - 1 }
-            : insult
-        )
+            : insult,
+        ),
       );
 
       // Remove from localStorage if the operation fails
       const updatedLikedInsults = likedInsults.filter(
-        (insult) => insult.id !== insultId
+        (insult) => insult.id !== insultId,
       );
       localStorage.setItem("voted", JSON.stringify(updatedLikedInsults)); // Update localStorage after rollback
-      throw error;}
+      throw error;
+    }
   };
 
   // Dislike an insult
@@ -209,49 +221,53 @@ export const InsultProvider: React.FC<{ children: React.ReactNode }> = ({
       prev.map((insult) =>
         insult._id === insultId
           ? { ...insult, dislike: insult.dislike + 1 }
-          : insult
-      )
+          : insult,
+      ),
     );
 
     try {
       const action = "dislike";
       const response = await axios.put(`/api/insult`, { insultId, action }); // Adjust the API endpoint
       setInsults((prev) =>
-        prev.map((insult) => (insult._id === insultId ? response.data : insult))
+        prev.map((insult) =>
+          insult._id === insultId ? response.data : insult,
+        ),
       );
     } catch (error) {
-      
       // Rollback optimistic update if the request fails
       setLikedInsults((prev) =>
-        prev.filter((insult) => insult.id !== insultId)
+        prev.filter((insult) => insult.id !== insultId),
       );
       setInsults((prev) =>
         prev.map((insult) =>
           insult._id === insultId
             ? { ...insult, dislike: insult.dislike - 1 }
-            : insult
-        )
+            : insult,
+        ),
       );
 
       // Remove from localStorage if the operation fails
       const updatedLikedInsults = likedInsults.filter(
-        (insult) => insult.id !== insultId
+        (insult) => insult.id !== insultId,
       );
       localStorage.setItem("voted", JSON.stringify(updatedLikedInsults)); // Update localStorage after rollback
-   throw error;
-   }
-    
+      throw error;
+    }
   };
 
   // Fetch insults on component mount
   useEffect(() => {
-    fetchInsults();
+    fetchInsults().catch(() => {
+      // Error state is handled via insultsError
+    });
   }, []);
 
   return (
     <InsultContext.Provider
       value={{
         insults,
+        isLoadingInsults,
+        insultsError,
         addInsult,
         likeInsult,
         dislikeInsult,

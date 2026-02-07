@@ -1,34 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import NavBar from "../component/navbar";
 import Roasts from "../component/Rosts";
-// import Comments from "../component/Comment";
 import { useInsults } from "@/context/InsultContext";
 import { useComments } from "@/context/Comment";
 
 export default function Gossip() {
-  const { insults } = useInsults();
-  const { comments } = useComments();
-  const [loading, setLoading] = useState(true);
+  const { isLoadingInsults, insultsError } = useInsults();
+  const { isLoadingComments, commentsError } = useComments();
 
-  useEffect(() => {
-    if (insults.length > 0 && comments.length > 0) {
-      setLoading(false);
-    }
-  }, [insults, comments]);
+  const isLoading = isLoadingInsults || isLoadingComments;
+  const errorMessage = insultsError || commentsError;
 
   return (
-    <div className="bg-[#1a1a1a] max-w-[700px] flex mx-auto justify-center ">
+    <div className="bg-background min-h-screen">
       <NavBar />
-      <div className="py-5 flex justify-between relative w-[100%]">
-        {loading ? (
-          <div className="flex justify-center items-center h-screen text-white w-full text-2xl">
-            Loading ...
+      <div className="mx-auto max-w-[720px] px-4 pt-20 pb-10">
+        {errorMessage ? (
+          <div className="rounded-lg border border-foreground/10 bg-foreground/5 px-4 py-3 text-sm text-foreground">
+            {errorMessage}
           </div>
-        ) : (
+        ) : null}
+
+        {/* Always render content; inner components handle skeletons */}
+        <div className={isLoading ? "opacity-100" : "opacity-100"}>
           <Roasts />
-        )}
+        </div>
       </div>
     </div>
   );

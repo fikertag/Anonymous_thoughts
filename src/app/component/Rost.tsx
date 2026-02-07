@@ -25,7 +25,7 @@ export default function Roast({ insult }: Insult) {
     setSelectedInsult,
     selectedInsult,
   } = useInsults();
-  const { isComment, setIsComment, comments, addComments } = useComments();
+  const { isComment, setIsComment, comments, addComments, isLoadingComments } = useComments();
   const [newComments, setNewComment] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -66,7 +66,7 @@ export default function Roast({ insult }: Insult) {
     addComments(newComments, selectedInsult)
       .then(() => {
         setNewComment("");
-        setError(null); // Clear any previous error
+        setError(null);
       })
       .catch((err) => {
         setError("Failed to add comment. Please try again.");
@@ -90,26 +90,23 @@ export default function Roast({ insult }: Insult) {
     <div
       onClick={(e) => handleComment(insult._id, e)}
       className={`${
-        isSelected ? "bg-[#202020]" : "bg-[#1a1a1a]"
-      } border border-[#3b3b3b] pt-2 px-2 text-[#cbccce] flex flex-col justify-between items-start text-sm cursor-pointer transition-all`}
+        isSelected ? "bg-foreground/5" : "bg-transparent"
+      } rounded-xl border border-foreground/10 pt-3 px-3 text-foreground flex flex-col justify-between items-start text-sm cursor-pointer transition-colors hover:bg-foreground/5`}
     >
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-foreground/60">
         {formatDistanceToNowStrict(new Date(insult.createdAt), {
           addSuffix: true,
         })}
       </div>
 
-      <div className="text-[15px] text-[#ffffff] pr-3 mb-3 font-light text-wrap whitespace-pre-wrap px-2 mt-1 break-words w-full">
+      <div className="text-[15px] text-white pr-3 mb-3 font-light text-wrap whitespace-pre-wrap px-2 mt-2 break-words w-full">
         {insult.detail
           .replace(/\n{2,}/g, "\n") // Replace multiple new lines with a single new line
           .trim()}{" "}
         {/* Remove leading and trailing new lines */}
       </div>
 
-      <div
-        className="flex gap-8 pb-3 items-center px-2"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex gap-8 pb-3 items-center px-2" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center  text-xs">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -117,18 +114,18 @@ export default function Roast({ insult }: Insult) {
             height="18"
             viewBox="0 0 24 24"
             fill={liked ? "#ff2c5a" : "none"}
-            stroke={liked ? "none" : "#3b3b3b"}
+            stroke={liked ? "none" : "currentColor"}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="cursor-pointer transition-all"
+            className="cursor-pointer transition-all text-foreground/40"
             onClick={() => handleLike(insult._id)}
           >
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path>
           </svg>
           <div
             className={`text-xs ml-1 ${
-              liked ? "text-[#ff2c5a]" : "text-[#3b3b3b]"
+              liked ? "text-[#ff2c5a]" : "text-foreground/40"
             }`}
           >
             {insult.like}
@@ -141,11 +138,11 @@ export default function Roast({ insult }: Insult) {
             height="15"
             width="15"
             fill={disliked ? "#74451f" : "none"}
-            stroke={disliked ? "none" : "#3b3b3b"}
+            stroke={disliked ? "none" : "currentColor"}
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="cursor-pointer transition-all"
+            className="cursor-pointer transition-all text-foreground/40"
             onClick={() => handleDislike(insult._id)}
           >
             <desc>
@@ -155,7 +152,7 @@ export default function Roast({ insult }: Insult) {
           </svg>
           <div
             className={`text-xs ml-1 ${
-              disliked ? "text-[#74451f]" : "text-[#3b3b3b]"
+              disliked ? "text-[#74451f]" : "text-foreground/40"
             }`}
           >
             {insult.dislike}
@@ -168,11 +165,11 @@ export default function Roast({ insult }: Insult) {
             height="15"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#ffffff"
+            stroke="currentColor"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="cursor-pointer transition-all"
+            className="cursor-pointer transition-all text-white"
             onClick={(e) => handleComment(insult._id, e)}
           >
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -183,31 +180,39 @@ export default function Roast({ insult }: Insult) {
         </div>
       </div>
       {isComment === insult._id && (
-        <div className="px-4 w-full pb-2" onClick={(e) => handleAddComments(e)}>
-          {comments.map(
-            (c) =>
-              c.insultId === insult._id && (
-                <div
-                  key={c._id}
-                  className="border-t border-[#3b3b3b] pt-3 px-2"
-                >
-                  <div className="text-xs text-gray-500">
-                    {formatDistanceToNowStrict(new Date(c.createdAt), {
-                      addSuffix: true,
-                    })}
-                  </div>
+        <div className="px-4 w-full pb-3" onClick={(e) => handleAddComments(e)}>
+          {isLoadingComments ? (
+            <div className="mt-3 animate-pulse rounded-lg border border-foreground/10 bg-foreground/5 p-3">
+              <div className="h-3 w-20 rounded bg-foreground/10" />
+              <div className="mt-2 h-4 w-full rounded bg-foreground/10" />
+            </div>
+          ) : (
+            comments.map(
+              (c) =>
+                c.insultId === insult._id && (
+                  <div
+                    key={c._id}
+                    className="border-t border-foreground/10 pt-3 px-2"
+                  >
+                    <div className="text-xs text-foreground/60">
+                      {formatDistanceToNowStrict(new Date(c.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </div>
 
-                  <div className="text-sm text-white pb-3 font-light px-2 whitespace-pre-wrap">
-                    {c.text}
+                    <div className="text-sm text-white pb-3 font-light px-2 whitespace-pre-wrap break-words">
+                      {c.text}
+                    </div>
                   </div>
-                </div>
-              )
+                )
+            )
           )}
-          <div className="flex items-end justify-between mt-3 ">
+
+          <div className="flex items-end justify-between mt-3 gap-3">
             <textarea
               ref={textareaRef}
               placeholder="Add a comment..."
-              className="overflow-y-hidden bg-transparent border border-[#3b3b3b] rounded-md px-3 py-2 text-sm resize-none flex-grow focus:outline-none h-10"
+              className="overflow-y-hidden bg-transparent border border-foreground/15 rounded-lg px-3 py-2 text-sm resize-none flex-grow focus:outline-none focus:ring-2 focus:ring-foreground/20 h-10 text-white placeholder:text-foreground/60"
               value={newComments}
               onChange={(e) => {
                 setNewComment(e.target.value);
@@ -220,42 +225,17 @@ export default function Roast({ insult }: Insult) {
             <button
               onClick={() => handleRealAddComments()}
               disabled={!newComments.trim() || loading}
-              className={`relative px-2 pr-5 flex justify-center items-center gap-1 shadow-sm py-1 transition-all active:bg-transparent text-sm rounded-sm ${
-                !newComments.trim() ? "text-[#616163]" : "text-[#cbccce]"
+              className={`inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                !newComments.trim() || loading
+                  ? "border-foreground/10 text-foreground/50 cursor-not-allowed"
+                  : "border-foreground/20 text-white hover:bg-foreground/5"
               }`}
             >
-              Send
-              {loading && (
-                <div className="flex justify-center items-center ml-2 absolute right-1">
-                  <div
-                    style={{
-                      border: "1px solid #1a1a1a",
-                      borderTop: "1px solid #ffffff",
-                      borderRadius: "50%",
-                      width: "10px",
-                      height: "10px",
-                      animation: "spin 2s linear infinite",
-                    }}
-                  ></div>
-                  <style jsx>{`
-                    @keyframes spin {
-                      0% {
-                        transform: rotate(0deg);
-                      }
-                      100% {
-                        transform: rotate(360deg);
-                      }
-                    }
-                  `}</style>
-                </div>
-              )}
-              {error && (
-                <div className="text-red-500 ml-2 absolute right-2 text-[8px]">
-                  X
-                </div>
-              )}
+              {loading ? "Sending…" : "Send"}
+              {loading ? <span className="spinner text-white/80" /> : null}
             </button>
           </div>
+          {error ? <div className="mt-2 text-xs text-red-400">{error}</div> : null}
         </div>
       )}
     </div>

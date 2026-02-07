@@ -16,6 +16,8 @@ interface CommentContextType {
   comments: Comment[];
   isComment: string;
   setIsComment: (id: string) => void;
+  isLoadingComments: boolean;
+  commentsError: string | null;
   fetchComments: () => Promise<void>;
   addComments: (text: string, insultId: string) => Promise<void>;
 }
@@ -24,6 +26,8 @@ const CommentContext = createContext<CommentContextType>({
   comments: [],
   isComment: "",
   setIsComment: () => {},
+  isLoadingComments: true,
+  commentsError: null,
   fetchComments: async () => {},
   addComments: async () => {},
 });
@@ -33,10 +37,14 @@ export const CommentProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isComment, setIsComment] = useState<string>("");
+  const [isLoadingComments, setIsLoadingComments] = useState<boolean>(true);
+  const [commentsError, setCommentsError] = useState<string | null>(null);
 
   // Fetch comments on component mount
   useEffect(() => {
-    fetchComments();
+    fetchComments().catch(() => {
+      // Error state is handled via commentsError
+    });
   }, []);
 
   // Initialize Pusher client
@@ -57,11 +65,16 @@ export const CommentProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Fetch comments from the API
   const fetchComments = async () => {
+    setIsLoadingComments(true);
+    setCommentsError(null);
     try {
       const response = await axios.get("/api/comment");
       setComments(response.data);
     } catch (error) {
-      console.error("Error fetching comments:", error);
+      setCommentsError("Failed to load comments. Please try again.");
+      throw error;
+    } finally {
+      setIsLoadingComments(false);
     }
   };
 
@@ -71,7 +84,7 @@ export const CommentProvider: React.FC<{ children: React.ReactNode }> = ({
       await axios.post("/api/comment", { text, insultId });
       // Do not manually update the state here. Let Pusher handle it.
     } catch (error) {
-      console.error("Error adding comment:", error);
+      throw error;
     }
   };
 
@@ -81,6 +94,8 @@ export const CommentProvider: React.FC<{ children: React.ReactNode }> = ({
         comments,
         isComment,
         setIsComment,
+        isLoadingComments,
+        commentsError,
         addComments,
         fetchComments,
       }}

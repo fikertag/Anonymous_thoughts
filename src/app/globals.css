@@ -2,19 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #1a1a1a;
+/* Theme primitives (used by Tailwind config: bg-background, text-foreground) */
+:root {
+  --background: #1a1a1a;
+  --foreground: #cbccce;
 }
-.loader {
-  border: 4px solid #f3f3f3; /* Light grey */
-  border-top: 4px solid #3498db; /* Blue */
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 2s linear infinite;
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Small inline spinner that inherits text color */
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin 0.9s linear infinite;
 }

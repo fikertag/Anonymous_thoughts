@@ -31,13 +31,17 @@ export default function NavBar() {
   };
 
   return (
-    <div className="bg-[#1a1a1a] w-full text-[#cbccce] border-b-[0.1px] border-[#2d2d2e] py-4 min-[900px]:px-32 px-4 flex justify-between items-center fixed z-10 left-0">
+    <div className="bg-background/80 backdrop-blur w-full text-foreground border-b border-foreground/10 py-4 px-4 flex justify-between items-center fixed z-10 left-0">
       <Link href={"/"} className="text-2xl font-bold">
         Gossip
       </Link>
       <div className="flex gap-8 text-lg relative">
         <p
-          className="flex gap-2 items-center cursor-pointer"
+          className={
+            loading
+              ? "flex gap-2 items-center cursor-not-allowed opacity-70"
+              : "flex gap-2 items-center cursor-pointer"
+          }
           onClick={handleReload}
         >
           <svg
